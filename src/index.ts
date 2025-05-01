@@ -8,16 +8,20 @@ import fs from "fs";
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Dynamically determine upload path: local or production
+// Determine the upload directory:
+// - Use UPLOADS_DIR if provided (e.g., in production like Render)
+// - Otherwise, default to a local directory at "../uploads"
 const uploadPath = process.env.UPLOADS_DIR || path.join(__dirname, "../uploads");
 
-// Create uploads folder if missing (local only)
+// Create the uploads directory if it doesn't exist (only in local dev)
 if (!process.env.UPLOADS_DIR && !fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
   console.log(`📁 Created local uploads directory at ${uploadPath}`);
 }
 
-// Set up Multer storage with 5MB file size limit
+// Set up Multer to handle file uploads:
+// - Files will be stored in `uploadPath`
+// - Filenames are made unique with a timestamp and random number
 const storage = multer.diskStorage({
   destination: uploadPath,
   filename: (req, file, cb) => {
@@ -26,29 +30,37 @@ const storage = multer.diskStorage({
   },
 });
 
+// Create a Multer upload instance with an 8MB file size limit per image
 const upload = multer({
   storage,
-  limits: { fileSize: 8 * 1024 * 1024 }, // 5MB per image
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
 });
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use("/uploads", express.static(uploadPath));
+// === Middleware ===
+app.use(cors()); // Enable Cross-Origin Resource Sharing
+app.use(express.json()); // Parse incoming JSON requests
+app.use("/uploads", express.static(uploadPath)); // Serve uploaded files statically
 
+// === Routes ===
 
-// Handle form + image upload
+/**
+ * POST /api/custom-order
+ * Handles form submission with optional image uploads.
+ * Saves the form data and uploaded image paths to the PostgreSQL database.
+ */
 app.post(
   "/api/custom-order",
-  upload.array("images", 5),
+  upload.array("images", 5), // Accept up to 5 images
   async (req: Request, res: Response) => {
     try {
       const { name, email, phone, projectDescription } = req.body;
 
+      // Get uploaded file paths
       const imagePaths = (req.files as Express.Multer.File[]).map(
         (file) => `/uploads/${file.filename}`
       );
 
+      // Insert the order into the database
       const result = await pool.query(
         `
         INSERT INTO custom_orders
@@ -68,27 +80,36 @@ app.post(
         imagePaths: imagePaths,
       });
     } catch (err: any) {
+      // Handle image size error
       if (err.code === "LIMIT_FILE_SIZE") {
         res.status(400).json({ message: "One or more images exceed the 5MB limit." });
         return;
       }
 
+      // Generic error fallback
       console.error("❌ Upload or DB error:", err);
       res.status(500).json({ message: "Something went wrong." });
     }
   }
 );
 
-// Health check route
+/**
+ * GET /api/hello
+ * Simple test route to confirm the backend is responsive.
+ */
 app.get("/api/hello", (_req: Request, res: Response) => {
   res.json({ message: "Hello from the backend!" });
 });
 
-// Simple health check
+/**
+ * GET /api/custom-order
+ * Health check for the custom order endpoint (no DB interaction).
+ */
 app.get("/api/custom-order", (_req: Request, res: Response) => {
   res.status(200).json({ message: "Custom order endpoint is healthy." });
 });
 
+// === Server Startup ===
 app.listen(PORT, () => {
   console.log(`🚀 Server is listening on http://localhost:${PORT}`);
 });
