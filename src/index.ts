@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { pool } from "./db"; 
+import { pool } from "./db";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -11,13 +11,13 @@ const PORT = process.env.PORT || 3001;
 // Dynamically determine upload path: local or production
 const uploadPath = process.env.UPLOADS_DIR || path.join(__dirname, "../uploads");
 
-// Create uploads folder if missing (only in local dev)
+// Create uploads folder if missing (local only)
 if (!process.env.UPLOADS_DIR && !fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true });
   console.log(`📁 Created local uploads directory at ${uploadPath}`);
 }
 
-// Set up Multer storage
+// Set up Multer storage with 5MB file size limit
 const storage = multer.diskStorage({
   destination: uploadPath,
   filename: (req, file, cb) => {
@@ -26,23 +26,21 @@ const storage = multer.diskStorage({
   },
 });
 
-// Create Multer instance
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 8 * 1024 * 1024 }, // 5MB per image
+});
 
-// Middleware setup
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(uploadPath));
 
-// Test route
-app.get("/api/hello", (_req: Request, res: Response) => {
-  res.json({ message: "Hello from the backend!" });
-});
 
-// Route to handle custom orders with file uploads
+// Handle form + image upload
 app.post(
   "/api/custom-order",
-  upload.array("images", 5), // Accept up to 5 images
+  upload.array("images", 5),
   async (req: Request, res: Response) => {
     try {
       const { name, email, phone, projectDescription } = req.body;
@@ -69,19 +67,28 @@ app.post(
         orderId: result.rows[0].id,
         imagePaths: imagePaths,
       });
-    } catch (err) {
+    } catch (err: any) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        res.status(400).json({ message: "One or more images exceed the 5MB limit." });
+        return;
+      }
+
       console.error("❌ Upload or DB error:", err);
       res.status(500).json({ message: "Something went wrong." });
     }
   }
 );
 
-// Health check route for /api/custom-order
+// Health check route
+app.get("/api/hello", (_req: Request, res: Response) => {
+  res.json({ message: "Hello from the backend!" });
+});
+
+// Simple health check
 app.get("/api/custom-order", (_req: Request, res: Response) => {
   res.status(200).json({ message: "Custom order endpoint is healthy." });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server is listening on http://localhost:${PORT}`);
 });
