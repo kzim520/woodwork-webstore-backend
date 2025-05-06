@@ -4,6 +4,7 @@ import { pool } from "./db";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { sendOrderNotification } from "./email";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -70,6 +71,14 @@ app.post(
         `,
         [name, email, phone, projectDescription, imagePaths]
       );
+
+      await sendOrderNotification({
+        name,
+        email,
+        phone,
+        projectDescription,
+        imagePaths,
+      });
 
       console.log("✅ Order saved with images:", imagePaths);
 
