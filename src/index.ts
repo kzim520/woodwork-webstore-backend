@@ -40,16 +40,16 @@ const upload = multer({
 // === Middleware ===
 
 // Get the allowed CORS origin from the environment or default to "*"
-const allowedOrigin = process.env.CORS_ORIGIN || "*";
+const allowedOrigins = (process.env.CORS_ORIGIN || "*").split(",");
 
 app.use(cors({
-  origin: allowedOrigin,
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 }));
 
-console.log(`🌐 CORS enabled for: ${allowedOrigin}`);
+console.log(`🌐 CORS enabled for: ${allowedOrigins}`);
 app.use(express.json()); // Parse incoming JSON requests
 app.use("/uploads", express.static(uploadPath)); // Serve uploaded files statically
 

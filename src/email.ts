@@ -1,6 +1,11 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || "");
+
+if (!process.env.RESEND_API_KEY) {
+  console.error("❌ RESEND_API_KEY not set. Check your environment variables.");
+  process.exit(1);
+}
 
 export async function sendOrderNotification(emailData: {
   name: string;
