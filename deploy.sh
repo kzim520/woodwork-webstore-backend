@@ -2,10 +2,17 @@
 
 # Load environment variables from .env file
 if [ -f .env ]; then
-  # Export each line, ignoring comments and empty lines
-  export $(grep -v '^#' .env | xargs)
+  echo "✅ Loading environment variables from .env..."
+  set -o allexport
+  source .env
+  set +o allexport
 else
   echo "❌ .env file not found. Please create one."
+  exit 1
+fi
+
+if [[ -z "$RENDER_API_KEY" || -z "$RENDER_SERVICE_ID" ]]; then
+  echo "❌ Missing RENDER_API_KEY or RENDER_SERVICE_ID. Please check your .env file."
   exit 1
 fi
 
