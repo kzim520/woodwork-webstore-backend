@@ -2,7 +2,7 @@
 
 # Load environment variables from .env file
 if [ -f .env ]; then
-  echo "✅ Loading environment variables from .env..."
+  echo "🔧 Loading environment variables from .env..."
   export $(grep -v '^#' .env | xargs)
 else
   echo "❌ .env file not found. Please create one."
@@ -14,11 +14,11 @@ if [[ -z "$RENDER_API_KEY" || -z "$RENDER_SERVICE_ID" ]]; then
   exit 1
 fi
 
-# # Check for uncommitted changes
-# if [[ -n $(git status --porcelain) ]]; then
-#   echo "🚧 You have uncommitted changes. Please commit or stash them first."
-#   exit 1
-# fi
+# Check for uncommitted changes
+if [[ -n $(git status --porcelain) ]]; then
+  echo "🚧 You have uncommitted changes. Please commit or stash them first."
+  exit 1
+fi
 
 # Build the TypeScript project
 echo "🏗️ Building backend services..."
